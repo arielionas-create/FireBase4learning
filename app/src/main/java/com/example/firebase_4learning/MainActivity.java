@@ -1,119 +1,96 @@
 package com.example.firebase_4learning;
 
-import android.app.Activity;
-import android.graphics.Color;
+import android.content.Intent;
 import android.os.Bundle;
-import android.view.Menu;
-import android.view.View;
-import android.widget.Button;
-import android.widget.EditText;
+import android.widget.ArrayAdapter;
+import android.widget.ListView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 
-import com.google.firebase.Firebase;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.util.ArrayList;
+import java.util.List;
+
+public class MainActivity extends AppCompatActivity {
+    ListView LvMen;
+    ArrayList<Men> mens;
+    ArrayList<String> ids;
+    ArrayAdapter adapter;
+    FloatingActionButton btnCreate;
 
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener {
-    EditText ageET, nameET;
-    Button btnCheck;
-    private String id;
+    private ActivityResultLauncher<Intent> updateLauncher;
+    private ActivityResultLauncher<Intent> createLauncher;
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
-        btnCheck = findViewById(R.id.Check);
-        btnCheck.setOnClickListener(this);
-        nameET = findViewById(R.id.Name);
-        ageET = findViewById(R.id.Age);
-        if(getIntent().getBooleanExtra("EDIT",false)){
-            load();
-        }
-        else
-        {
-            btnCheck.setOnClickListener(view -> {
-                saveData();
-            });
-        }
+        LvMen = findViewById(R.id.LvMen);
+        btnCreate = findViewById(R.id.btnCreate);
 
-    }
+        loadList();
 
-
-    @Override
-    public void onClick(View v) {
-        saveData();
-    }
-    private void load() {
-        id = getIntent().getStringExtra("ID");
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-        db.collection("Person")
-                .document(id)
-                .get()
-                .addOnSuccessListener(documentSnapshot -> {
-                    Men men = documentSnapshot.toObject(Men.class);
-                    nameET.setText(men.getName());
-                    ageET.setText(String.valueOf(men.getAge()));
-                })
-                .addOnFailureListener(exc  -> {
-                    Toast.makeText(this,"oops....",Toast.LENGTH_LONG).show();
-                });
-
-        btnCheck.setOnClickListener(view -> {
-            onUpdate();
+        updateLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),
+                result -> {backFromUpdate();}
+        );
+        createLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),
+                result -> { backFromCreate();
+                }
+        );
+        btnCreate.setOnClickListener(view -> {
+            Intent intent = new Intent(this, PersonActivity.class);
+            createLauncher.launch(intent);
         });
 
+
     }
-    private void onUpdate(){
-        String name = nameET.getText().toString();
-        int age = Integer.parseInt(ageET.getText().toString());
-        Men men = new Men(age, name);
+    private void backFromCreate(){
+        Toast.makeText(this, "create succefully",Toast.LENGTH_LONG).show();
+        loadList();
+    }
+    private void backFromUpdate() {
+        Toast.makeText(this, "Back succefully",Toast.LENGTH_LONG).show();
+        loadList();
+    }
+
+    private void loadList() {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
-        db.collection("Person")
-                .document(id)
-                .set(men)
-                .addOnSuccessListener(t -> {
-                    finish();
+        db.collection("Person").get()
+                .addOnSuccessListener(snapshots -> {
+                    mens = new ArrayList<>();
+                    ids = new ArrayList<>();
+                    List<DocumentSnapshot> list = snapshots.getDocuments();
+                    for(DocumentSnapshot d : list){
+                       Men m = d.toObject(Men.class);
+                       mens.add(m);
+                       ids.add(d.getId());
+                    }
+                    adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, mens);
+                    LvMen.setAdapter(adapter);
+                    LvMen.setOnItemClickListener((p,v,pos,id) -> {onItemClick(pos);}) ;
+
                 })
                 .addOnFailureListener(exc -> {
-                    Toast.makeText(this, "error", Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, "error loading data", Toast.LENGTH_LONG).show();
                 });
     }
 
-
-    private void saveData()
+    private void onItemClick(int pos)
     {
-        String name = nameET.getText().toString();
-        int age = Integer.parseInt(ageET.getText().toString());
-        boolean good = true;
-        if(ageET.getText().toString().isEmpty()){
-            ageET.setBackgroundColor(Color.RED);
-            good = false;
-        }
-        if(name.isEmpty()){
-            nameET.setBackgroundColor(Color.RED);
-            good = false;
-        }
-        if(good){
-
-
-            FirebaseFirestore db = FirebaseFirestore.getInstance();
-            Men men = new Men(age,name);
-            db.collection("Person").add(men)
-                    .addOnSuccessListener(res -> {
-                        Toast.makeText(this, "added", Toast.LENGTH_LONG).show();
-                        nameET.setText("");
-                        ageET.setText("");
-                    })
-                    .addOnFailureListener(exc -> {
-                        Toast.makeText(this, "error", Toast.LENGTH_LONG).show();
-                    });
-        }
+        String id = ids.get(pos);
+        Intent intent = new Intent(this , PersonActivity.class);
+        intent.putExtra("ID" , id);
+        intent.putExtra("EDIT" , true);
+        updateLauncher.launch(intent);
     }
 }
