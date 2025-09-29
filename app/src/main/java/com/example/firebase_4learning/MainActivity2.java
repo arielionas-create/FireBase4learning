@@ -3,6 +3,7 @@ package com.example.firebase_4learning;
 import android.content.Intent;
 import android.os.Bundle;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.ListView;
 import android.widget.Toast;
 
@@ -26,9 +27,12 @@ public class MainActivity2 extends AppCompatActivity {
     ArrayList<Men> mens;
     ArrayList<String> ids;
     ArrayAdapter adapter;
+    Button btnCreate;
 
 
     private ActivityResultLauncher<Intent> updateLauncher;
+    private ActivityResultLauncher<Intent> createLauncher;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,14 +40,28 @@ public class MainActivity2 extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main2);
         LvMen = findViewById(R.id.LvMen);
+        btnCreate = findViewById(R.id.btnCreate);
 
         loadList();
 
         updateLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),
                 result -> {backFromUpdate();}
         );
-    }
+        createLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),
+                result -> { backFromCreate();
+                }
+        );
+        btnCreate.setOnClickListener(view -> {
+            Intent intent =new Intent(this, MainActivity.class);
+            createLauncher.launch(intent);
+        });
 
+
+    }
+    private void backFromCreate(){
+        Toast.makeText(this, "create succefully",Toast.LENGTH_LONG).show();
+        loadList();
+    }
     private void backFromUpdate() {
         Toast.makeText(this, "Back succefully",Toast.LENGTH_LONG).show();
         loadList();
